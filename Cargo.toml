@@ -1,0 +1,16 @@
+[package]
+name = "glitch-studio"
+version = "0.1.0"
+authors = ["syuilo <syuilotan@yahoo.co.jp>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+image="0.22.2"
+rand="0.7.0"
+gio= "0.7.0"
+
+[dependencies.gtk]
+version = "0.7.0"
+features = ["v3_16"] 
