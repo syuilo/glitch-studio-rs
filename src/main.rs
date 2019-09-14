@@ -8,7 +8,7 @@ use std::cmp;
 use image::GenericImage;
 use image::GenericImageView;
 use image::Pixel;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 
 struct GSDataModel {
     fxs: Vec<FX>,
@@ -18,10 +18,12 @@ struct FX {
     name: String,
 }
 
+const SEED: u64 = 0;
+const SCALE: f32 = 1.0;
 const GHOST_AMOUNT: u32 = 64;
 const CHANNEL_SHIFT_AMOUNT: u32 = 8;
-const TEAR_AMOUNT: u32 = 16;
-const TEAR_MAX_HEIGHT: u32 = 32;
+const TEAR_AMOUNT: u32 = 32;
+const TEAR_MAX_HEIGHT: u32 = 64;
 const TEAR_MAX_TIMES: u32 = 32;
 const PIXEL_BLUR_AMOUNT: u32 = 256;
 const PIXEL_BLUR_FLUCTUATION: u32 = 32;
@@ -45,6 +47,8 @@ fn main() {
 
     println!("GLITCH STUDIO");
 
+    let mut rng = rand_xoshiro::Xoshiro256StarStar::seed_from_u64(SEED);
+
     println!("Please input your image path:");
 /*
     let mut path = String::new();
@@ -54,7 +58,7 @@ fn main() {
 
     let path = path.trim();
 */
-    let path = "input3.png";
+    let path = "input5.png";
 
     println!("Loading the image...");
 
@@ -78,19 +82,23 @@ fn main() {
 
     let img = ghost(img, GHOST_AMOUNT);
     let img = channel_shift(img, CHANNEL_SHIFT_AMOUNT);
-    let img = pixel_blur(img, PIXEL_BLUR_AMOUNT, PIXEL_BLUR_FLUCTUATION);
+    //let img = pixel_blur(img, PIXEL_BLUR_AMOUNT, PIXEL_BLUR_FLUCTUATION);
     let img = granular(img);
-    let img = tear(img, TEAR_MAX_TIMES, TEAR_MAX_HEIGHT, TEAR_AMOUNT);
+    let img = tear(img, TEAR_MAX_TIMES, TEAR_MAX_HEIGHT, TEAR_AMOUNT, rng);
     let img = noise(img);
 
     img.save("output.png").unwrap();
 }
 
-fn channel_shift(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, amount: u32) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
+fn channel_shift(
+    input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, amount: u32,
+) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
     println!("ChannelShift FX");
 
     let mut output = input.clone();
     let (width, height) = input.dimensions();
+
+    let amount = (amount as f32 * SCALE).floor() as u32;
 
     for x in amount..(width - amount) {
         for y in 0..height {
@@ -108,11 +116,15 @@ fn channel_shift(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, 
     output
 }
 
-fn ghost(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, amount: u32) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
+fn ghost(
+    input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, amount: u32
+) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
     println!("Ghost FX");
 
     let mut output = input.clone();
     let (width, height) = input.dimensions();
+
+    let amount = (amount as f32 * SCALE).floor() as u32;
 
     for x in amount..width {
         for y in 0..height {
@@ -148,18 +160,23 @@ fn continurous_ghost(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8
     output
 }*/
 
-fn tear(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, max_times: u32, max_height: u32, amount: u32) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
+fn tear(
+    input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
+    max_times: u32,
+    max_height: u32,
+    amount: u32,
+    mut rng: rand_xoshiro::Xoshiro256StarStar,
+) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
     println!("Tear FX");
 
     let mut output = input.clone();
     let (width, height) = input.dimensions();
-    let mut rng = rand::thread_rng();
 
-    let shift_times = rng.gen_range(0, max_times);
+    let shift_times = (rng.gen::<f64>() * max_times as f64).floor() as u64;
     for _ in 0..shift_times {
-        let begin_y = rng.gen_range(0, height);
-        let shift_height = rng.gen_range(0, max_height);
-        let shift_amount = rng.gen_range(0, amount);
+        let begin_y = ((rng.gen::<f64>() * height as f64) * SCALE as f64).floor() as u32;
+        let shift_height = ((rng.gen::<f64>() * max_height as f64) * SCALE as f64).floor() as u32;
+        let shift_amount = ((rng.gen::<f64>() * amount as f64) * SCALE as f64).floor() as u32;
 
         for x in shift_amount..(width - shift_amount) {
             let max_y = cmp::min(height, begin_y + shift_height);
@@ -216,9 +233,9 @@ fn granular(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>) -> im
     let mut output = input.clone();
     let (width, height) = input.dimensions();
     let times = 1024;
-    let granular_width = 32;
-    let granular_height = 8;
-    let granular_velocity = 32;
+    let granular_width = 32 * SCALE as i32;
+    let granular_height = 8 * SCALE as i32;
+    let granular_velocity = 32 * SCALE as i32;
     let mut rng = rand::thread_rng();
 
     for _ in 0..times {
@@ -249,7 +266,10 @@ fn granular(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>) -> im
     output
 }
 
-fn noise(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
+// TODO: SCALE support
+fn noise(
+    input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
+) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
     println!("Noise FX");
 
     let mut output = input.clone();
