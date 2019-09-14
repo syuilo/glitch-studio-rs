@@ -191,18 +191,25 @@ fn block_stretch(
 fn block_color(
     input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
     size: u32,
+    range: u32,
 ) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
     println!("BlockColor FX");
 
     let mut output = input.clone();
     let (width, height) = input.dimensions();
-    let times = 64;
+    let times = 128;
     let use_rgb = false;
     let mut rng = rand::thread_rng();
+    let range_begin = if height - range == 0 { 0 } else { rng.gen_range(0, height - range) };
 
     for _ in 0..times {
-        let noise_x = (rng.gen_range(0, width) as f32 / size as f32).round() as u32 * size;
-        let noise_y = (rng.gen_range(0, height) as f32 / size as f32).round() as u32 * size;
+        let noise_x = rng.gen_range(0, width);
+        let noise_y = rng.gen_range(0, range) + range_begin;
+
+        // Snap
+        let noise_x = (noise_x as f32 / size as f32).round() as u32 * size;
+        let noise_y = (noise_y as f32 / size as f32).round() as u32 * size;
+
         let color = match rng.gen_range(0, if use_rgb { 3 } else { 6 }) {
             0 => image::Rgba([255, 0, 0, 255]),
             1 => image::Rgba([0, 255, 0, 255]),
