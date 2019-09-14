@@ -143,6 +143,7 @@ fn ghost(
 fn block_stretch(
     input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
     size: u32,
+    range: u32,
 ) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
     println!("BlockStretch FX");
 
@@ -150,10 +151,16 @@ fn block_stretch(
     let (width, height) = input.dimensions();
     let times = 128;
     let mut rng = rand::thread_rng();
+    let range_begin = if height - range == 0 { 0 } else { rng.gen_range(0, height - range) };
 
     for _ in 0..times {
-        let noise_x = (rng.gen_range(0, width) as f32 / size as f32).round() as u32 * size;
-        let noise_y = (rng.gen_range(0, height) as f32 / size as f32).round() as u32 * size;
+        let noise_x = rng.gen_range(0, width);
+        let noise_y = rng.gen_range(0, range) + range_begin;
+
+        // Snap
+        let noise_x = (noise_x as f32 / size as f32).round() as u32 * size;
+        let noise_y = (noise_y as f32 / size as f32).round() as u32 * size;
+
         let direction = rng.gen_range(0, 2);
 
         if direction == 0 {
@@ -198,9 +205,30 @@ fn block_color(
     let mut output = input.clone();
     let (width, height) = input.dimensions();
     let times = 128;
-    let use_rgb = false;
+    let use_rgb = true;
+    let use_cmy = true;
+    let use_bw = true;
     let mut rng = rand::thread_rng();
     let range_begin = if height - range == 0 { 0 } else { rng.gen_range(0, height - range) };
+
+    let mut colors = vec!();
+
+    if use_rgb {
+        colors.push(image::Rgba([255, 0, 0, 255]));
+        colors.push(image::Rgba([0, 255, 0, 255]));
+        colors.push(image::Rgba([0, 0, 255, 255]));
+    }
+
+    if use_cmy {
+        colors.push(image::Rgba([255, 255, 0, 255]));
+        colors.push(image::Rgba([255, 0, 255, 255]));
+        colors.push(image::Rgba([0, 255, 255, 255]));
+    }
+
+    if use_bw {
+        colors.push(image::Rgba([0, 0, 0, 255]));
+        colors.push(image::Rgba([255, 255, 255, 255]));
+    }
 
     for _ in 0..times {
         let noise_x = rng.gen_range(0, width);
@@ -210,15 +238,7 @@ fn block_color(
         let noise_x = (noise_x as f32 / size as f32).round() as u32 * size;
         let noise_y = (noise_y as f32 / size as f32).round() as u32 * size;
 
-        let color = match rng.gen_range(0, if use_rgb { 3 } else { 6 }) {
-            0 => image::Rgba([255, 0, 0, 255]),
-            1 => image::Rgba([0, 255, 0, 255]),
-            2 => image::Rgba([0, 0, 255, 255]),
-            3 => image::Rgba([255, 255, 0, 255]),
-            4 => image::Rgba([255, 0, 255, 255]),
-            5 => image::Rgba([0, 255, 255, 255]),
-            _ => panic!()
-        };
+        let color = colors[rng.gen_range(0, colors.len())];
 
         let x_over = cmp::max(0, (noise_x as i32 + size as i32) - width as i32) as u32;
         let x = size - x_over;
