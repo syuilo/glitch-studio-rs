@@ -281,7 +281,7 @@ fn tear(
         let direction = rng.gen_range(0, 2);
 
         if direction == 0 { // ->
-            for x in 0..shift_amount {
+            for x in 0..shift_amount { // 端をミラーリング
                 let max_y = cmp::min(height, begin_y + shift_height);
                 for y in begin_y..max_y {
                     output.put_pixel(x, y, *input.get_pixel(shift_amount - x, y));
@@ -294,7 +294,7 @@ fn tear(
                 }
             }
         } else { // <-
-            for x in (width - shift_amount)..width {
+            for x in (width - shift_amount)..width { // 端をミラーリング
                 let max_y = cmp::min(height, begin_y + shift_height);
                 for y in begin_y..max_y {
                     output.put_pixel(x, y, *input.get_pixel(width - (x - (width - shift_amount)) - 1, y));
