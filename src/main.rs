@@ -139,26 +139,96 @@ fn ghost(
 
     output
 }
-/*
-fn continurous_ghost(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
-    println!("ContinurousGhost FX");
+
+fn block_stretch(
+    input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
+    size: u32,
+) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
+    println!("BlockStretch FX");
 
     let mut output = input.clone();
     let (width, height) = input.dimensions();
+    let times = 128;
+    let mut rng = rand::thread_rng();
 
-    for x in 0..width {
-        for y in 0..height {
-            let [_, src_g, _, _] = input.get_pixel(x - amount, y).0;
-            let [r, g, b, a] = input.get_pixel(x, y).0;
+    for _ in 0..times {
+        let noise_x = (rng.gen_range(0, width) as f32 / size as f32).round() as u32 * size;
+        let noise_y = (rng.gen_range(0, height) as f32 / size as f32).round() as u32 * size;
+        let direction = rng.gen_range(0, 2);
 
-            let dst_g = cmp::max(b, src_g);
+        if direction == 0 {
+            for i in 0..size {
+                let dst_x = noise_x + i;
+                let dst_y = noise_y;
 
-            output.put_pixel(x, y, image::Rgba([r, dst_g, b, a]));
+                if dst_x >= width { continue; }
+
+                for j in 0..size {
+                    if dst_y + j >= height { continue; }
+
+                    output.put_pixel(dst_x, dst_y + j, *input.get_pixel(noise_x, noise_y + j));
+                }
+            }
+        } else {
+            for i in 0..size {
+                let dst_x = noise_x;
+                let dst_y = noise_y + i;
+
+                if dst_y >= height { continue; }
+
+                for j in 0..size {
+                    if dst_x + j >= width { continue; }
+
+                    output.put_pixel(dst_x + j, dst_y, *input.get_pixel(noise_x + j, noise_y));
+                }
+            }
         }
     }
 
     output
-}*/
+}
+
+fn block_color(
+    input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
+    size: u32,
+) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
+    println!("BlockColor FX");
+
+    let mut output = input.clone();
+    let (width, height) = input.dimensions();
+    let times = 64;
+    let use_rgb = false;
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..times {
+        let noise_x = (rng.gen_range(0, width) as f32 / size as f32).round() as u32 * size;
+        let noise_y = (rng.gen_range(0, height) as f32 / size as f32).round() as u32 * size;
+        let color = match rng.gen_range(0, if use_rgb { 3 } else { 6 }) {
+            0 => image::Rgba([255, 0, 0, 255]),
+            1 => image::Rgba([0, 255, 0, 255]),
+            2 => image::Rgba([0, 0, 255, 255]),
+            3 => image::Rgba([255, 255, 0, 255]),
+            4 => image::Rgba([255, 0, 255, 255]),
+            5 => image::Rgba([0, 255, 255, 255]),
+            _ => panic!()
+        };
+
+        let x_over = cmp::max(0, (noise_x as i32 + size as i32) - width as i32) as u32;
+        let x = size - x_over;
+        let y_over = cmp::max(0, (noise_y as i32 + size as i32) - height as i32) as u32;
+        let y = size - y_over;
+
+        for x in 0..x {
+            let dst_x = noise_x + x;
+            for y in 0..y {
+                let dst_y = noise_y + y;
+                output.put_pixel(dst_x, dst_y, color);
+            }
+        }
+    }
+
+    output
+}
 
 fn tear(
     input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
@@ -270,6 +340,7 @@ fn granular(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>) -> im
 fn noise(
     input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
     size: u32,
+    fade: bool
 ) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
     println!("Noise FX");
 
@@ -293,11 +364,15 @@ fn noise(
             for j in 0..size {
                 if dst_y + j >= height { continue; }
 
-                output.put_pixel(dst_x, dst_y + j, blend(
-                    image::Rgba(input.get_pixel(dst_x, dst_y).0),
-                    image::Rgba(px.0),
-                    1 as f32 - (i as f32 / velocity as f32) as f32
-                ));
+                if fade {
+                    output.put_pixel(dst_x, dst_y + j, blend(
+                        image::Rgba(input.get_pixel(dst_x, dst_y).0),
+                        image::Rgba(px.0),
+                        1 as f32 - (i as f32 / velocity as f32) as f32
+                    ));
+                } else {
+                    output.put_pixel(dst_x, dst_y + j, image::Rgba(px.0));
+                }
             }
         }
     }
