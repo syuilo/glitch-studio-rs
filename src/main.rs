@@ -278,12 +278,33 @@ fn tear(
         let begin_y = ((rng.gen::<f64>() * height as f64) * SCALE as f64).floor() as u32;
         let shift_height = ((rng.gen::<f64>() * max_height as f64) * SCALE as f64).floor() as u32;
         let shift_amount = ((rng.gen::<f64>() * amount as f64) * SCALE as f64).floor() as u32;
+        let direction = rng.gen_range(0, 2);
 
-        for x in shift_amount..(width - shift_amount) {
-            let max_y = cmp::min(height, begin_y + shift_height);
-            for y in begin_y..max_y {
-                // TODO: 左右どちらにシフトするかをランダムにする
-                output.put_pixel(x, y, *input.get_pixel(x - shift_amount, y));
+        if direction == 0 { // ->
+            for x in 0..shift_amount {
+                let max_y = cmp::min(height, begin_y + shift_height);
+                for y in begin_y..max_y {
+                    output.put_pixel(x, y, *input.get_pixel(shift_amount - x, y));
+                }
+            }
+            for x in shift_amount..width {
+                let max_y = cmp::min(height, begin_y + shift_height);
+                for y in begin_y..max_y {
+                    output.put_pixel(x, y, *input.get_pixel(x - shift_amount, y));
+                }
+            }
+        } else { // <-
+            for x in (width - shift_amount)..width {
+                let max_y = cmp::min(height, begin_y + shift_height);
+                for y in begin_y..max_y {
+                    output.put_pixel(x, y, *input.get_pixel(width - (x - (width - shift_amount)) - 1, y));
+                }
+            }
+            for x in 0..(width - shift_amount) {
+                let max_y = cmp::min(height, begin_y + shift_height);
+                for y in begin_y..max_y {
+                    output.put_pixel(x, y, *input.get_pixel(x + shift_amount, y));
+                }
             }
         }
     }
