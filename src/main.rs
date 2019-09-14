@@ -207,7 +207,8 @@ fn block_color(
     let times = 128;
     let use_rgb = true;
     let use_cmy = true;
-    let use_bw = true;
+    let use_b = true;
+    let use_w = true;
     let mut rng = rand::thread_rng();
     let range_begin = if height - range == 0 { 0 } else { rng.gen_range(0, height - range) };
 
@@ -225,8 +226,11 @@ fn block_color(
         colors.push(image::Rgba([0, 255, 255, 255]));
     }
 
-    if use_bw {
+    if use_b {
         colors.push(image::Rgba([0, 0, 0, 255]));
+    }
+
+    if use_w {
         colors.push(image::Rgba([255, 255, 255, 255]));
     }
 
