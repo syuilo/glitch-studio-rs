@@ -85,7 +85,7 @@ fn main() {
     //let img = pixel_blur(img, PIXEL_BLUR_AMOUNT, PIXEL_BLUR_FLUCTUATION);
     let img = granular(img);
     let img = tear(img, TEAR_MAX_TIMES, TEAR_MAX_HEIGHT, TEAR_AMOUNT, rng);
-    let img = noise(img);
+    let img = noise(img, 4);
 
     img.save("output.png").unwrap();
 }
@@ -269,6 +269,7 @@ fn granular(input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>) -> im
 // TODO: SCALE support
 fn noise(
     input: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>,
+    size: u32,
 ) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
     println!("Noise FX");
 
@@ -289,11 +290,15 @@ fn noise(
 
             if dst_x >= width { continue; }
 
-            output.put_pixel(dst_x, dst_y, blend(
-                image::Rgba(input.get_pixel(dst_x, dst_y).0),
-                image::Rgba(px.0),
-                1 as f32 - (i as f32 / velocity as f32) as f32
-            ));
+            for j in 0..size {
+                if dst_y + j >= height { continue; }
+
+                output.put_pixel(dst_x, dst_y + j, blend(
+                    image::Rgba(input.get_pixel(dst_x, dst_y).0),
+                    image::Rgba(px.0),
+                    1 as f32 - (i as f32 / velocity as f32) as f32
+                ));
+            }
         }
     }
 
